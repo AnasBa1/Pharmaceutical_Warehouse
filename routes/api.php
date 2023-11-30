@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\MedicationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -17,3 +18,11 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
+
+Route::get('medications', [MedicationController::class, 'listAllMedications']);
+
+Route::get('medications/{id}', [MedicationController::class, 'showMedication']);
+
+Route::post('medications', [MedicationController::class, 'createMedication']);
+
+Route::post('search', [MedicationController::class, 'search']);
