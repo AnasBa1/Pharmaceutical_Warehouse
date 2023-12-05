@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('phone_number')->unique();
             $table->string('password');
             $table->rememberToken();
+            $table->enum('role', ['pharmacist', 'manager'])->default('pharmacist');
             $table->timestamps();
         });
     }

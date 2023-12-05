@@ -15,7 +15,8 @@ class AuthController extends Controller
         $validator = Validator::make($request->all(), [
             'username' => ['required', 'unique:users,username'],
             'phone_number' => ['required', 'unique:users,phone_number'],
-            'password' => ['required']
+            'password' => ['required'],
+            'role' => ['in:pharmacist,manager'],
             ]);
 
         if ($validator->fails()) {
@@ -26,10 +27,16 @@ class AuthController extends Controller
             ], 422);
         }
 
+        // Set default role to 'pharmacist' if not provided in the request
+        if (!$request['role']){
+            $request['role'] = 'pharmacist';
+        }
+
         $user = User::query()->create([
            'username' => $request['username'],
            'phone_number' => $request['phone_number'],
-           'password' => $request['password']
+           'password' => $request['password'],
+            'role' => $request['role'],
         ]);
 
         $token = $user->createToken('Storma')->plainTextToken;
