@@ -22,6 +22,13 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
+Route::post('register', [AuthController::class, 'register']);
+Route::post('login', [AuthController::class, 'login']);
+
+Route::middleware('auth:sanctum')->group(function(){
+    Route::get('logout', [AuthController::class, 'logout']);
+});
+
 Route::get('medications', [MedicationController::class, 'listValidMedications']);
 
 Route::get('medications/{id}', [MedicationController::class, 'showMedication']);
@@ -35,4 +42,3 @@ Route::get('orders', [BuyOrderController::class, 'listAllOrders']);
 Route::get('orders/{id}', [BuyOrderController::class, 'showOrder']);
 
 Route::put('orders/{id}', [BuyOrderController::class, 'changeOrderStatus']);
-
