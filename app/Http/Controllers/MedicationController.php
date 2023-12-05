@@ -10,16 +10,16 @@ use Illuminate\Support\Facades\Validator;
 
 class MedicationController extends Controller
 {
-    public function listAllMedications(): JsonResponse
+    public function listValidMedications(): JsonResponse
     {
-        $medication = Medication::query()->join('medical_classifications', 'medical_classification_id', '=', 'medical_classifications.id')
+        $medications = Medication::query()->join('medical_classifications', 'medical_classification_id', '=', 'medical_classifications.id')
                                   ->select('medications.id', 'medications.trade_name', 'medical_classifications.classification', 'medications.available_quantity', 'medications.expiration_date', 'medications.price')
                                   ->get();
 
         return response()->json([
             'status' => true,
-            'message' => 'The medication list has been successfully retrieved',
-            'data' => $medication
+            'message' => 'The medications list has been successfully retrieved.',
+            'data' => $medications
         ]);
     }
 
@@ -30,15 +30,15 @@ class MedicationController extends Controller
             'trade_name' => ['required'],
             'medical_classification_id' => ['required', 'exists:medical_classifications,id'],
             'manufacturer' => ['nullable'],
-            'available_quantity' => ['required'],
-            'expiration_date' => ['required','date'],
-            'price' => ['required']
+            'available_quantity' => ['required', 'integer', 'min:0'],
+            'expiration_date' => ['required', 'date'],
+            'price' => ['required', 'integer', 'min:0']
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'status' => false,
-                'message' => "Validate error",
+                'message' => "Validate error.",
                 'errors' => $validator->errors()
             ], 422);
         }
@@ -51,13 +51,13 @@ class MedicationController extends Controller
             'available_quantity' => $request['available_quantity'],
             'expiration_date' => $request['expiration_date'],
             'price' => $request['price'],
-        ])->only(['id', 'trade_name', 'scientific_name']);
+        ])->only(['id', 'trade_name']);
 
       //  $medication = $medication
 
         return response()->json([
             'status' => true,
-            'message' => 'The medication has been added successfully',
+            'message' => 'The medication has been added successfully.',
             'data' => $medication
         ], 201);
     }
@@ -75,23 +75,37 @@ class MedicationController extends Controller
 
         return response()->json([
             'status' => true,
-            'message' => 'The medications and classifications has been found successfully',
+            'message' => 'The medications and classifications has been found successfully.',
             'data' => [
                 'medications' => $medications,
                 'classifications' => $classifications
-            ]
-        ]);
+            ]]);
     }
 
     public function showMedication ($id): JsonResponse
     {
+        $validator = Validator::make(['id' => $id], [
+            'id' => ['exists:medications,id'],
+        ],
+        [
+            'id.exists' => 'The selected medication does not exists.'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => false,
+                'message' => "Validate error.",
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
         $medication = Medication::query()->join('medical_classifications', 'medical_classification_id', '=', 'medical_classifications.id')
             ->where('medications.id', '=', $id)
-            ->get(['medications.id','medications.scientific_name' , 'medications.trade_name', 'medical_classifications.classification', 'medications.manufacturer', 'medications.available_quantity', 'medications.expiration_date', 'medications.price']);
+            ->first(['medications.id','medications.scientific_name' , 'medications.trade_name', 'medical_classifications.classification', 'medications.manufacturer', 'medications.available_quantity', 'medications.expiration_date', 'medications.price']);
 
         return response()->json([
             'status' => true,
-            'message' => 'The medication has been found successfully',
+            'message' => 'The medication has been found successfully.',
             'data' => [
                 'medication' => $medication
             ]
