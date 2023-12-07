@@ -7,6 +7,7 @@ use App\Models\BuyOrderItem;
 use App\Models\Medication;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 
 class BuyOrderController extends Controller
@@ -23,6 +24,34 @@ class BuyOrderController extends Controller
             'message' => 'The buy orders list has been successfully retrieved.',
             'data' => $orders
         ]);
+    }
+
+    public function listUserOrders(): JsonResponse
+    {
+        $userId = Auth::user()->getAuthIdentifier();
+
+        $orders = BuyOrder::query()->join('users', 'user_id', '=', 'users.id')
+            ->join('order_statuses', 'order_status_id', '=', 'order_statuses.id')
+            ->where('buy_orders.user_id', '=', $userId)
+            ->select('buy_orders.id', 'users.username', 'buy_orders.pay_status', 'order_statuses.status', 'buy_orders.order_status_id', 'buy_orders.created_at')
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'The buy orders list has been successfully retrieved.',
+            'data' => $orders
+        ]);
+    }
+
+    public function listOrders()
+    {
+        $user = Auth::user();
+        if ($user['role'] == 'manager'){
+            return $this->listAllOrders();
+        }
+        if ($user['role'] == 'pharmacist'){
+            return $this->listUserOrders();
+        }
     }
 
     public function showOrder($id): JsonResponse
@@ -83,6 +112,39 @@ class BuyOrderController extends Controller
         ]);
     }
 
+    public function createOrder(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'medications' => ['array', 'present'],
+            'medications.*.medication_id' => ['required', 'exists:medications,id'],
+            'medications.*.ordered_quantity' => ['required', 'integer', 'min:1', /*'max:'*/],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => false,
+                'message' => "Validate error.",
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $userId = Auth::user()->getAuthIdentifier();
+
+        $buyOrder = BuyOrder::query()->create([
+            'user_id' => $userId,
+        ]);
+
+        foreach ($request['medications'] as $medication){
+            BuyOrderItem::query()->create([
+                'buy_order_id' => $buyOrder['id'],
+                'medication_id' => $medication['medication_id'],
+                'ordered_quantity' => $medication['ordered_quantity'],
+            ]);
+        }
+
+        return response()->json($this->showOrder($buyOrder['id'])->original, 201);
+    }
+
     public function changeOrderStatus(Request $request, $id): JsonResponse
     {
         $request['id'] = $id;
@@ -103,14 +165,14 @@ class BuyOrderController extends Controller
             ], 422);
         }
 
-//        //prevent the user from change the status to a previous status
-//        if (BuyOrder::query()->find($id)->order_status_id >= $request['order_status_id']){
-//            return response()->json([
-//                'status' => false,
-//                'message' => "You have change the order status in correct order.",
-//                'data' => []
-//            ], 422);
-//        }
+        //prevent the user from change the status to a previous status or the same status
+        if (!(BuyOrder::query()->find($id)->order_status_id == $request['order_status_id'] - 1)){
+            return response()->json([
+                'status' => false,
+                'message' => "You have change the order status in correct order.",
+                'data' => []
+            ], 422);
+        }
 
         BuyOrder::query()
             ->find($id)
@@ -118,10 +180,6 @@ class BuyOrderController extends Controller
                 'pay_status' => $request['pay_status'],
                 'order_status_id' => $request['order_status_id']
             ]);
-
-//        $order = BuyOrder::query()
-//            ->join('order_statuses', 'order_status_id', '=', 'order_statuses.id')
-//            ->where('buy_orders.id', '=', $id)->first();
 
         $order = BuyOrder::query()
             ->join('users', 'user_id', '=', 'users.id')
