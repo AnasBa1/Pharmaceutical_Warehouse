@@ -23,6 +23,19 @@ class MedicationController extends Controller
         ]);
     }
 
+    public function listExpiredMedications(): JsonResponse
+    {
+        $medications = Medication::query()->onlyTrashed()->join('medical_classifications', 'medical_classification_id', '=', 'medical_classifications.id')
+            ->select('medications.id', 'medications.trade_name', 'medical_classifications.classification', 'medications.available_quantity', 'medications.expiration_date', 'medications.price')
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'The medications list has been successfully retrieved.',
+            'data' => $medications
+        ]);
+    }
+
     public function createMedication(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
@@ -51,15 +64,9 @@ class MedicationController extends Controller
             'available_quantity' => $request['available_quantity'],
             'expiration_date' => $request['expiration_date'],
             'price' => $request['price'],
-        ])->only(['id', 'trade_name']);
+        ]);
 
-      //  $medication = $medication
-
-        return response()->json([
-            'status' => true,
-            'message' => 'The medication has been added successfully.',
-            'data' => $medication
-        ], 201);
+        return response()->json($this->showMedication($medication['id'])->original, 201);
     }
 
    public function search(Request $request): JsonResponse
@@ -82,7 +89,7 @@ class MedicationController extends Controller
             ]]);
     }
 
-    public function showMedication ($id): JsonResponse
+    public function showMedication($id): JsonResponse
     {
         $validator = Validator::make(['id' => $id], [
             'id' => ['exists:medications,id'],

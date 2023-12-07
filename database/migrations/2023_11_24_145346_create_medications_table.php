@@ -24,6 +24,7 @@ return new class extends Migration
             $table->date('expiration_date');
             $table->integer('price');
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 
