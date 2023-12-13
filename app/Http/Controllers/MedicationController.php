@@ -106,7 +106,8 @@ class MedicationController extends Controller
             ], 422);
         }
 
-        $medication = Medication::query()->join('medical_classifications', 'medical_classification_id', '=', 'medical_classifications.id')
+        $medication = Medication::query()->withTrashed()
+            ->join('medical_classifications', 'medical_classification_id', '=', 'medical_classifications.id')
             ->where('medications.id', '=', $id)
             ->first(['medications.id','medications.scientific_name' , 'medications.trade_name', 'medical_classifications.classification', 'medications.manufacturer', 'medications.available_quantity', 'medications.expiration_date', 'medications.price']);
 

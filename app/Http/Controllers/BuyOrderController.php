@@ -43,17 +43,6 @@ class BuyOrderController extends Controller
         ]);
     }
 
-    public function listOrders()
-    {
-        $user = Auth::user();
-        if ($user['role'] == 'manager'){
-            return $this->listAllOrders();
-        }
-        if ($user['role'] == 'pharmacist'){
-            return $this->listUserOrders();
-        }
-    }
-
     public function showOrder($id): JsonResponse
     {
 
@@ -85,22 +74,6 @@ class BuyOrderController extends Controller
             ->where('buy_order_items.buy_order_id', '=', $id)
             ->select('medications.id', 'medications.trade_name', 'buy_order_items.ordered_quantity', 'medications.price')
             ->get();
-
-//        $order = BuyOrderItem::query()/*->select('medications.trade_name', 'buy_order_items.ordered_quantity')*/
-//            ->join('medications', 'medication_id', '=', 'medications.id')
-//            ->join('medical_classifications', 'medical_classification_id', '=', 'medical_classifications.id')
-//            ->join('buy_orders', 'buy_order_id', '=', 'buy_orders.id')
-//            ->join('order_statuses', 'order_status_id', '=', 'order_statuses.id')
-//            ->where('buy_order_items.buy_order_id', '=', $id)
-//            ->get();
-
-//            $order = BuyOrder::query()->with(['order_status', 'user', 'buy_order_items'])
-//                ->where('buy_orders.id', '=', $id)
-//                ->get();
-
-//        $order = BuyOrder::query()->join('buy_order_items', 'buy_orders.id', '=', 'buy_order_items.buy_order_id')
-//            ->where('buy_orders.id', '=', $id)->get();
-
 
         return response()->json([
             'status' => true,
@@ -169,7 +142,7 @@ class BuyOrderController extends Controller
         if (!(BuyOrder::query()->find($id)->order_status_id == $request['order_status_id'] - 1)){
             return response()->json([
                 'status' => false,
-                'message' => "You have change the order status in correct order.",
+                'message' => "You have to change the order status in correct order.",
                 'data' => []
             ], 422);
         }

@@ -53,8 +53,9 @@ class AuthController extends Controller
     public function login (Request $request):JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'phone_number' => ['required', 'digits:10', 'exists:users,phone_number'],
-            'password' => ['required']
+            'phone_number' => ['required', 'digits:10'/*, 'exists:users,phone_number'*/],
+            'password' => ['required'],
+            'role' => ['required'],
         ]);
 
         if ($validator->fails()) {
@@ -76,6 +77,14 @@ class AuthController extends Controller
         $user = User::query()
             ->where('phone_number', '=', $request['phone_number'])
             ->first();
+
+        if($user->role != $request->role) {
+            return response()->json([
+                'status' => false,
+                'message' => "You are not authorized to initiate this process.",
+                'data' => []
+            ], 403);
+        }
 
         $token = $user->createToken('Storma')->plainTextToken;
 
