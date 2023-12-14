@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('medical_classifications', function (Blueprint $table) {
             $table->id();
-            $table->string('classification');
+            $table->string('classification')->unique();
             $table->timestamps();
         });
     }

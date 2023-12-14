@@ -6,6 +6,7 @@ use App\Models\MedicalClassification;
 use App\Models\Medication;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 
 class MedicationController extends Controller
@@ -13,7 +14,7 @@ class MedicationController extends Controller
     public function listValidMedications(): JsonResponse
     {
         $medications = Medication::query()->join('medical_classifications', 'medical_classification_id', '=', 'medical_classifications.id')
-                                  ->select('medications.id', 'medications.trade_name', 'medical_classifications.classification', 'medications.available_quantity', 'medications.expiration_date', 'medications.price')
+                                  ->select('medications.id', 'medications.trade_name', 'medical_classifications.classification', 'medications.available_quantity', 'medications.price')
                                   ->get();
 
         return response()->json([
@@ -25,8 +26,9 @@ class MedicationController extends Controller
 
     public function listExpiredMedications(): JsonResponse
     {
-        $medications = Medication::query()->onlyTrashed()->join('medical_classifications', 'medical_classification_id', '=', 'medical_classifications.id')
-            ->select('medications.id', 'medications.trade_name', 'medical_classifications.classification', 'medications.available_quantity', 'medications.expiration_date', 'medications.price')
+        $medications = Medication::query()->onlyTrashed()
+            ->join('medical_classifications', 'medical_classification_id', '=', 'medical_classifications.id')
+            ->select('medications.id', 'medications.trade_name', 'medical_classifications.classification', 'medications.available_quantity', 'medications.price')
             ->get();
 
         return response()->json([
@@ -39,10 +41,10 @@ class MedicationController extends Controller
     public function createMedication(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'scientific_name' => ['nullable'],
+            'scientific_name' => ['required'],
             'trade_name' => ['required'],
             'medical_classification_id' => ['required', 'exists:medical_classifications,id'],
-            'manufacturer' => ['nullable'],
+            'manufacturer' => ['required'],
             'available_quantity' => ['required', 'integer', 'min:0'],
             'expiration_date' => ['required', 'date'],
             'price' => ['required', 'integer', 'min:0']
@@ -66,16 +68,45 @@ class MedicationController extends Controller
             'price' => $request['price'],
         ]);
 
-        return response()->json($this->showMedication($medication['id'])->original, 201);
+        $medicationData = $this->showMedication($medication['id'])->original['data'];
+
+        return response()->json([
+            'status' => true,
+            'message' => 'The medication has been added successfully.',
+            'data' => $medicationData,
+        ], 201);
     }
 
    public function search(Request $request): JsonResponse
     {
+        $validator = Validator::make($request->all(), [
+            'search' => ['required'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => false,
+                'message' => "Validate error.",
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
         $search = $request['search'];
-        $medications = Medication::query()->join('medical_classifications', 'medical_classification_id', '=', 'medical_classifications.id')
-            ->where('medications.trade_name', 'LIKE', "%$search%")
-            ->orWhere('medications.scientific_name', 'LIKE', "%$search%")
-            ->get(['medications.id','medications.scientific_name' , 'medications.trade_name', 'medical_classifications.classification', 'medications.available_quantity', 'medications.expiration_date', 'medications.price']);
+        if (Auth::user()->role == 'manager') {
+            $medications = Medication::query()->withTrashed()
+                ->join('medical_classifications', 'medical_classification_id', '=', 'medical_classifications.id')
+                ->where('medications.trade_name', 'LIKE', "%$search%")
+                ->orWhere('medications.scientific_name', 'LIKE', "%$search%")
+                ->select('medications.id', 'medications.trade_name', 'medical_classifications.classification', 'medications.available_quantity', 'medications.price')
+                ->get();
+        } else {
+            $medications = Medication::query()
+                ->join('medical_classifications', 'medical_classification_id', '=', 'medical_classifications.id')
+                ->where('medications.trade_name', 'LIKE', "%$search%")
+                ->orWhere('medications.scientific_name', 'LIKE', "%$search%")
+                ->select('medications.id', 'medications.trade_name', 'medical_classifications.classification', 'medications.available_quantity', 'medications.price')
+                ->get();
+        }
 
         $classifications = MedicalClassification::query()->where('medical_classifications.classification', 'LIKE', "%$search%")
         ->get(['medical_classifications.id', 'medical_classifications.classification']);
@@ -114,9 +145,7 @@ class MedicationController extends Controller
         return response()->json([
             'status' => true,
             'message' => 'The medication has been found successfully.',
-            'data' => [
-                'medication' => $medication
-            ]
+            'data' => $medication
         ]);
     }
 }

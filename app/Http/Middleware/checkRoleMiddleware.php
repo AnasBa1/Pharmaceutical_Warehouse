@@ -13,11 +13,11 @@ class checkRoleMiddleware
      *
      * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
      */
-    public function handle(Request $request, Closure $next, ...$roles): Response
+    public function handle(Request $request, Closure $next, $role): Response
     {
         $user = $request->user();
 
-        if (! $user || ! in_array($user->role, $roles)) {
+        if (!$user || $user->role != $role) {
             return response()->json([
                 'status' => false,
                 'message' => "You are not authorized to initiate this process.",

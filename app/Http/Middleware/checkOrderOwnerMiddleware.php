@@ -33,7 +33,7 @@ class checkOrderOwnerMiddleware
 
         return response()->json([
             'status' => false,
-            'message' => "You are not authorized to initiate this process.",
+            'message' => "You are not authorized to show this order.",
             'data' => []
         ], 403);
     }

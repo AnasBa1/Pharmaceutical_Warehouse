@@ -16,6 +16,7 @@ class BuyOrderController extends Controller
     {
         $orders = BuyOrder::query()->join('users', 'user_id', '=', 'users.id')
             ->join('order_statuses', 'order_status_id', '=', 'order_statuses.id')
+            ->orderBy('buy_orders.id', 'desc')
             ->select('buy_orders.id', 'users.username', 'buy_orders.pay_status', 'order_statuses.status', 'buy_orders.order_status_id', 'buy_orders.created_at')
             ->get();
 
@@ -33,6 +34,7 @@ class BuyOrderController extends Controller
         $orders = BuyOrder::query()->join('users', 'user_id', '=', 'users.id')
             ->join('order_statuses', 'order_status_id', '=', 'order_statuses.id')
             ->where('buy_orders.user_id', '=', $userId)
+            ->orderBy('buy_orders.id', 'desc')
             ->select('buy_orders.id', 'users.username', 'buy_orders.pay_status', 'order_statuses.status', 'buy_orders.order_status_id', 'buy_orders.created_at')
             ->get();
 
@@ -65,7 +67,7 @@ class BuyOrderController extends Controller
             ->join('users', 'user_id', '=', 'users.id')
             ->join('order_statuses', 'order_status_id', '=', 'order_statuses.id')
             ->where('buy_orders.id', '=', $id)
-            ->select('buy_orders.id', 'users.username', 'buy_orders.pay_status', 'order_statuses.status', 'buy_orders.order_status_id', 'buy_orders.created_at')
+            ->select('buy_orders.id', 'users.username', 'users.phone_number', 'buy_orders.pay_status', 'order_statuses.status', 'buy_orders.order_status_id', 'buy_orders.created_at')
             ->first();
 
         $medications = BuyOrderItem::query()
@@ -77,7 +79,7 @@ class BuyOrderController extends Controller
 
         return response()->json([
             'status' => true,
-            'message' => 'The buy order has been found successfully',
+            'message' => 'The buy order has been found successfully.',
             'data' => [
                 'order_details' => $order,
                 'medications' => $medications
@@ -90,7 +92,7 @@ class BuyOrderController extends Controller
         $validator = Validator::make($request->all(), [
             'medications' => ['array', 'present'],
             'medications.*.medication_id' => ['required', 'exists:medications,id'],
-            'medications.*.ordered_quantity' => ['required', 'integer', 'min:1', /*'max:'*/],
+            'medications.*.ordered_quantity' => ['required', 'integer', 'min:1'],
         ]);
 
         if ($validator->fails()) {
@@ -99,6 +101,28 @@ class BuyOrderController extends Controller
                 'message' => "Validate error.",
                 'errors' => $validator->errors()
             ], 422);
+        }
+
+        foreach ($request['medications'] as $medication) {
+            $orderedMedication = Medication::query()->withTrashed()
+                ->where('medications.id', '=', $medication['medication_id'])
+                ->first();
+            if ($orderedMedication->available_quantity < $medication['ordered_quantity']) {
+                $unavailableMedication[] = [
+                    'id' => $orderedMedication->id,
+                    'trade_name' => $orderedMedication->trade_name,
+                    'available_quantity' => $orderedMedication->available_quantity,
+                    'ordered_quantity' => $medication['ordered_quantity'],
+                ];
+            }
+        }
+
+        if (!empty($unavailableMedication)){
+            return response()->json([
+                'status' => false,
+                'message' => 'Sorry, the ordered medications quantities is more than the available.',
+                'data' => $unavailableMedication
+            ], 400);
         }
 
         $userId = Auth::user()->getAuthIdentifier();
@@ -115,16 +139,19 @@ class BuyOrderController extends Controller
             ]);
         }
 
-        return response()->json($this->showOrder($buyOrder['id'])->original, 201);
+        $orderData = $this->showOrder($buyOrder['id'])->original['data'];
+
+        return response()->json([
+            'status' => true,
+            'message' => 'The buy order has been created successfully.',
+            'data' => $orderData,
+        ], 201);
     }
 
-    public function changeOrderStatus(Request $request, $id): JsonResponse
+    public function changeOrderStatus($id): JsonResponse
     {
-        $request['id'] = $id;
-        $validator = Validator::make($request->all(), [
-            'pay_status' => ['required', 'boolean'],
-            'order_status_id' => ['required', 'exists:order_statuses,id'],
-            'id' => ['exists:buy_orders,id']
+        $validator = Validator::make(['id' => $id], [
+            'id' => ['exists:buy_orders,id'],
         ],
         [
             'id.exists' => 'The selected order does not exists.'
@@ -133,54 +160,133 @@ class BuyOrderController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'status' => false,
-                'message' => "Validate error",
+                'message' => "Validate error.",
                 'errors' => $validator->errors()
             ], 422);
         }
 
-        //prevent the user from change the status to a previous status or the same status
-        if (!(BuyOrder::query()->find($id)->order_status_id == $request['order_status_id'] - 1)){
+        $orderData = $this->showOrder($id)->original['data'];
+        $statusId = $orderData['order_details']['order_status_id'];
+
+        if ($statusId == 3 || $statusId == 4){
             return response()->json([
                 'status' => false,
-                'message' => "You have to change the order status in correct order.",
-                'data' => []
-            ], 422);
+                'message' => 'You can\'t change the order status because it\'s ' . $orderData['order_details']['status'] . '.',
+                'data' => $orderData
+            ], 400);
         }
 
-        BuyOrder::query()
-            ->find($id)
-            ->update([
-                'pay_status' => $request['pay_status'],
-                'order_status_id' => $request['order_status_id']
+        else if ($statusId == 2){
+            BuyOrder::query()->find($id)->update([
+                'order_status_id' => 3,
             ]);
+        }
 
-        $order = BuyOrder::query()
-            ->join('users', 'user_id', '=', 'users.id')
-            ->join('order_statuses', 'order_status_id', '=', 'order_statuses.id')
-            ->where('buy_orders.id', '=', $id)
-            ->select('buy_orders.id', 'users.username', 'buy_orders.pay_status', 'order_statuses.status', 'buy_orders.order_status_id', 'buy_orders.created_at')
-            ->first();
-
-        //decrement the quantity of medications after change the order status to Shipped
-        if ($request['order_status_id'] == 2) {
+        //change the status for a new order or refuse it
+        else {
             $orderItems = BuyOrderItem::query()->where('buy_order_id', '=', $id)->get();
 
             foreach ($orderItems as $orderItem) {
-                $medicationOrderedQuantity = Medication::query()
+                $orderedMedication = Medication::query()->withTrashed()
+                    ->where('medications.id', '=', $orderItem['medication_id'])
+                    ->first();
+                if ($orderedMedication->available_quantity < $orderItem->ordered_quantity) {
+                    $unavailableMedication[] = [
+                        'id' => $orderedMedication->id,
+                        'trade_name' => $orderedMedication->trade_name,
+                        'available_quantity' => $orderedMedication->available_quantity,
+                        'ordered_quantity' => $orderItem->ordered_quantity,
+                    ];
+                }
+            }
+
+            if (!empty($unavailableMedication)){
+                BuyOrder::query()->find($id)->update([
+                    'order_status_id' => 4,
+                ]);
+
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Sorry, the order has been refused, because the ordered medications quantities is more than the available.',
+                    'data' => $unavailableMedication
+                ], 400);
+            }
+
+            foreach ($orderItems as $orderItem) {
+                $medicationOrderedQuantity = Medication::query()->withTrashed()
                     ->where('medications.id', '=', $orderItem->medication_id)
                     ->first()->available_quantity;
-                if ($medicationOrderedQuantity >= $orderItem->ordered_quantity) {
-                    Medication::query()
+                if ($medicationOrderedQuantity >= $orderItem->ordered_quantity){
+                    Medication::query()->withTrashed()
                         ->where('id', '=', $orderItem->medication_id)
                         ->decrement('available_quantity', $orderItem->ordered_quantity);
                 }
             }
+            BuyOrder::query()->find($id)->update([
+                'order_status_id' => 2,
+            ]);
         }
+
+        $orderData = $this->showOrder($id)->original['data'];
 
         return response()->json([
             'status' => true,
-            'message' => 'The buy order status has been successfully updated.',
-            'data' => $order
+            'message' => 'The buy order status has been updated successfully.',
+            'data' => $orderData
+        ]);
+    }
+
+    public function changeOrderPayStatus($id): JsonResponse
+    {
+        $validator = Validator::make(['id' => $id], [
+            'id' => ['exists:buy_orders,id'],
+        ],
+        [
+            'id.exists' => 'The selected order does not exists.'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => false,
+                'message' => "Validate error.",
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $orderData = $this->showOrder($id)->original['data'];
+
+        if ($orderData['order_details']['pay_status']){
+            return response()->json([
+                'status' => false,
+                'message' => 'Sorry, the ordered is already paid.',
+                'data' => $orderData
+            ], 400);
+        }
+
+        if ($orderData['order_details']['order_status_id'] == 1){
+            return response()->json([
+                'status' => false,
+                'message' => 'You can\'t change the pay status before the order is shipped.',
+                'data' => $orderData
+            ], 400);
+        } else if ($orderData['order_details']['order_status_id'] == 4){
+            return response()->json([
+                'status' => false,
+                'message' => 'Sorry, the order is refused you can\'t change pay status to paid.',
+                'data' => $orderData
+            ], 400);
+        }
+
+        BuyOrder::query()->find($id)->update([
+            'pay_status' => true,
+        ]);
+
+        $orderData = $this->showOrder($id)->original['data'];
+
+        return response()->json([
+            'status' => true,
+            'message' => 'The pay status of the order has been updated successfully.',
+            'data' => $orderData
         ]);
     }
 }

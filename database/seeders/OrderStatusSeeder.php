@@ -14,9 +14,10 @@ class OrderStatusSeeder extends Seeder
     public function run(): void
     {
         $statuses = [
-            'Processing Stock',
+            'Under Preparing ',
             'Shipped',
-            'Received'
+            'Received',
+            'Refused',
         ];
 
         foreach ($statuses as $status){

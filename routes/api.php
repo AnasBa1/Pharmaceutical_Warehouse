@@ -44,8 +44,10 @@ Route::middleware('auth:sanctum')->group(function(){
         Route::get('user', 'listUserOrders')->middleware('restrictRole:pharmacist');
 
         Route::get('{id}', 'showOrder')->middleware('checkOrderOwner');
-        Route::patch('{id}', 'changeOrderStatus')->middleware('restrictRole:manager');
         Route::post('/', 'createOrder')->middleware('restrictRole:pharmacist');
+
+        Route::get('status/{id}', 'changeOrderStatus')->middleware('restrictRole:manager');
+        Route::get('pay/{id}', 'changeOrderPayStatus')->middleware('restrictRole:manager');
     });
 
     Route::prefix('classifications')->controller(ClassificationController::class)->group(function () {

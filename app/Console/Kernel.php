@@ -15,7 +15,7 @@ class Kernel extends ConsoleKernel
     {
         $schedule->call(function () {
             Medication::query()->where('expiration_date', '<', now())->delete();
-        })->everyTenSeconds();
+        })->everyTenSeconds();//->daily();
     }
 
     /**

@@ -14,9 +14,19 @@ class MedicalClassificationSeeder extends Seeder
     public function run(): void
     {
         $classifications = [
-            'Headache',
-            'Stomachache',
-            'Allergy'
+            'Analgesic',
+            'Allergy',
+            'Musculoskeletal System',
+            'Gastro-intestinal',
+            'Respiratory Tract',
+            'Dermatological',
+            'Anti-infectives',
+            'Ophthalmic',
+            'Oral And Dental Conditions',
+            'Vitamins',
+            'Neurological',
+            'Cardiovascular',
+            'Ear, Nose And Throat',
         ];
 
         foreach ($classifications as $classification){
