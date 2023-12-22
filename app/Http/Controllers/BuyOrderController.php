@@ -67,7 +67,7 @@ class BuyOrderController extends Controller
             ->join('users', 'user_id', '=', 'users.id')
             ->join('order_statuses', 'order_status_id', '=', 'order_statuses.id')
             ->where('buy_orders.id', '=', $id)
-            ->select('buy_orders.id', 'users.username', 'users.phone_number', 'buy_orders.pay_status', 'order_statuses.status', 'buy_orders.order_status_id', 'buy_orders.created_at')
+            ->select('buy_orders.id', 'users.username', 'users.phone_number', 'buy_orders.pay_status', 'order_statuses.status', 'buy_orders.order_status_id', 'buy_orders.total_price', 'buy_orders.created_at')
             ->first();
 
         $medications = BuyOrderItem::query()
@@ -103,6 +103,7 @@ class BuyOrderController extends Controller
             ], 422);
         }
 
+        $totalPrice = 0;
         foreach ($request['medications'] as $medication) {
             $orderedMedication = Medication::query()->withTrashed()
                 ->where('medications.id', '=', $medication['medication_id'])
@@ -112,12 +113,13 @@ class BuyOrderController extends Controller
                     'id' => $orderedMedication->id,
                     'trade_name' => $orderedMedication->trade_name,
                     'available_quantity' => $orderedMedication->available_quantity,
-                    'ordered_quantity' => $medication['ordered_quantity'],
+                    'ordered_quantity' => (int)$medication['ordered_quantity'],
                 ];
             }
+            $totalPrice += $medication['ordered_quantity'] * $orderedMedication->price;
         }
 
-        if (!empty($unavailableMedication)){
+        if (isset($unavailableMedication)){
             return response()->json([
                 'status' => false,
                 'message' => 'Sorry, the ordered medications quantities is more than the available.',
@@ -129,6 +131,7 @@ class BuyOrderController extends Controller
 
         $buyOrder = BuyOrder::query()->create([
             'user_id' => $userId,
+            'total_price' => $totalPrice
         ]);
 
         foreach ($request['medications'] as $medication){
@@ -200,7 +203,7 @@ class BuyOrderController extends Controller
                 }
             }
 
-            if (!empty($unavailableMedication)){
+            if (isset($unavailableMedication)){
                 BuyOrder::query()->find($id)->update([
                     'order_status_id' => 4,
                 ]);

@@ -22,6 +22,7 @@ return new class extends Migration
                 ->constrained('users')
                 ->cascadeOnDelete()
                 ->cascadeOnUpdate();
+            $table->integer('total_price');
             $table->timestamps();
         });
     }

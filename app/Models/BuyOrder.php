@@ -14,7 +14,8 @@ class BuyOrder extends Model
     protected $fillable = [
         'pay_status',
         'order_status_id',
-        'user_id'
+        'user_id',
+        'total_price'
     ];
 
     /**
