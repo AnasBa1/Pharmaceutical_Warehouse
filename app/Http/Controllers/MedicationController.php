@@ -14,7 +14,7 @@ class MedicationController extends Controller
     public function listValidMedications(): JsonResponse
     {
         $medications = Medication::query()->join('medical_classifications', 'medical_classification_id', '=', 'medical_classifications.id')
-                                  ->select('medications.id', 'medications.trade_name', 'medical_classifications.classification', 'medications.available_quantity', 'medications.price')
+                                  ->select('medications.id', 'medications.scientific_name' , 'medications.trade_name', 'medical_classifications.classification', 'medications.manufacturer', 'medications.available_quantity', 'medications.expiration_date', 'medications.price')
                                   ->get();
 
         return response()->json([
@@ -28,12 +28,12 @@ class MedicationController extends Controller
     {
         $medications = Medication::query()->onlyTrashed()
             ->join('medical_classifications', 'medical_classification_id', '=', 'medical_classifications.id')
-            ->select('medications.id', 'medications.trade_name', 'medical_classifications.classification', 'medications.available_quantity', 'medications.price')
+            ->select('medications.id', 'medications.scientific_name' , 'medications.trade_name', 'medical_classifications.classification', 'medications.manufacturer', 'medications.available_quantity', 'medications.expiration_date', 'medications.price')
             ->get();
 
         return response()->json([
             'status' => true,
-            'message' => 'The medications list has been successfully retrieved.',
+            'message' => 'The expired medications list has been successfully retrieved.',
             'data' => $medications
         ]);
     }
@@ -97,27 +97,22 @@ class MedicationController extends Controller
                 ->join('medical_classifications', 'medical_classification_id', '=', 'medical_classifications.id')
                 ->where('medications.trade_name', 'LIKE', "%$search%")
                 ->orWhere('medications.scientific_name', 'LIKE', "%$search%")
-                ->select('medications.id', 'medications.trade_name', 'medical_classifications.classification', 'medications.available_quantity', 'medications.price')
+                ->select('medications.id', 'medications.scientific_name' , 'medications.trade_name', 'medical_classifications.classification', 'medications.manufacturer', 'medications.available_quantity', 'medications.expiration_date', 'medications.price')
                 ->get();
         } else {
             $medications = Medication::query()
                 ->join('medical_classifications', 'medical_classification_id', '=', 'medical_classifications.id')
                 ->where('medications.trade_name', 'LIKE', "%$search%")
                 ->orWhere('medications.scientific_name', 'LIKE', "%$search%")
-                ->select('medications.id', 'medications.trade_name', 'medical_classifications.classification', 'medications.available_quantity', 'medications.price')
+                ->select('medications.id', 'medications.scientific_name' , 'medications.trade_name', 'medical_classifications.classification', 'medications.manufacturer', 'medications.available_quantity', 'medications.expiration_date', 'medications.price')
                 ->get();
         }
 
-        $classifications = MedicalClassification::query()->where('medical_classifications.classification', 'LIKE', "%$search%")
-        ->get(['medical_classifications.id', 'medical_classifications.classification']);
-
         return response()->json([
             'status' => true,
-            'message' => 'The medications and classifications has been found successfully.',
-            'data' => [
-                'medications' => $medications,
-                'classifications' => $classifications
-            ]]);
+            'message' => 'The medications has been found successfully.',
+            'data' => $medications
+            ]);
     }
 
     public function showMedication($id): JsonResponse
@@ -140,7 +135,7 @@ class MedicationController extends Controller
         $medication = Medication::query()->withTrashed()
             ->join('medical_classifications', 'medical_classification_id', '=', 'medical_classifications.id')
             ->where('medications.id', '=', $id)
-            ->first(['medications.id','medications.scientific_name' , 'medications.trade_name', 'medical_classifications.classification', 'medications.manufacturer', 'medications.available_quantity', 'medications.expiration_date', 'medications.price']);
+            ->first(['medications.id', 'medications.scientific_name' , 'medications.trade_name', 'medical_classifications.classification', 'medications.manufacturer', 'medications.available_quantity', 'medications.expiration_date', 'medications.price']);
 
         return response()->json([
             'status' => true,

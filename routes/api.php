@@ -53,5 +53,6 @@ Route::middleware('auth:sanctum')->group(function(){
     Route::prefix('classifications')->controller(ClassificationController::class)->group(function () {
         Route::get('/', 'listAllClassifications');
         Route::get('{id}', 'listMedicationsClassification');
+        Route::post('search', 'search');
     });
 });

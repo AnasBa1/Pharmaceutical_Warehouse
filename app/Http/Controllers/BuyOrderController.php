@@ -17,7 +17,7 @@ class BuyOrderController extends Controller
         $orders = BuyOrder::query()->join('users', 'user_id', '=', 'users.id')
             ->join('order_statuses', 'order_status_id', '=', 'order_statuses.id')
             ->orderBy('buy_orders.id', 'desc')
-            ->select('buy_orders.id', 'users.username', 'buy_orders.pay_status', 'order_statuses.status', 'buy_orders.order_status_id', 'buy_orders.created_at')
+            ->select('buy_orders.id', 'users.username', 'users.phone_number', 'buy_orders.pay_status', 'order_statuses.status', 'buy_orders.order_status_id', 'buy_orders.total_price', 'buy_orders.created_at')
             ->get();
 
         return response()->json([
@@ -35,7 +35,7 @@ class BuyOrderController extends Controller
             ->join('order_statuses', 'order_status_id', '=', 'order_statuses.id')
             ->where('buy_orders.user_id', '=', $userId)
             ->orderBy('buy_orders.id', 'desc')
-            ->select('buy_orders.id', 'users.username', 'buy_orders.pay_status', 'order_statuses.status', 'buy_orders.order_status_id', 'buy_orders.created_at')
+            ->select('buy_orders.id', 'users.username', 'users.phone_number', 'buy_orders.pay_status', 'order_statuses.status', 'buy_orders.order_status_id', 'buy_orders.total_price', 'buy_orders.created_at')
             ->get();
 
         return response()->json([
