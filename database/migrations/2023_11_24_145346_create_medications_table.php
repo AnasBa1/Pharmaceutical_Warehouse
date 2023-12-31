@@ -20,9 +20,9 @@ return new class extends Migration
                 ->cascadeOnDelete()
                 ->cascadeOnUpdate();
             $table->string('manufacturer')->nullable();
-            $table->integer('available_quantity');
+            $table->unsignedInteger('available_quantity');
             $table->date('expiration_date');
-            $table->integer('price');
+            $table->unsignedInteger('price');
             $table->timestamps();
             $table->softDeletes();
         });

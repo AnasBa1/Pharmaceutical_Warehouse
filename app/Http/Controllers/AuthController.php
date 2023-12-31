@@ -47,7 +47,7 @@ class AuthController extends Controller
             'data' => [
                 'user' => $user,
                 'token' => $token
-            ]]);
+            ]], 201);
     }
 
     public function login (Request $request):JsonResponse
@@ -71,7 +71,7 @@ class AuthController extends Controller
                 'status' => false,
                 'message' => "The phone number or password isn't correct.",
                 'data' => []
-            ], 500);
+            ], 401);
         }
 
         $user = User::query()

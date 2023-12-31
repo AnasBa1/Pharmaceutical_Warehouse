@@ -8,6 +8,7 @@ use App\Models\Medication;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
 class BuyOrderController extends Controller
@@ -104,6 +105,8 @@ class BuyOrderController extends Controller
         }
 
         $totalPrice = 0;
+
+        //Check if I have enough available quantity for the ordered medications
         foreach ($request['medications'] as $medication) {
             $orderedMedication = Medication::query()->withTrashed()
                 ->where('medications.id', '=', $medication['medication_id'])
@@ -129,21 +132,33 @@ class BuyOrderController extends Controller
 
         $userId = Auth::user()->getAuthIdentifier();
 
-        $buyOrder = BuyOrder::query()->create([
-            'user_id' => $userId,
-            'total_price' => $totalPrice
-        ]);
-
-        foreach ($request['medications'] as $medication){
-            BuyOrderItem::query()->create([
-                'buy_order_id' => $buyOrder['id'],
-                'medication_id' => $medication['medication_id'],
-                'ordered_quantity' => $medication['ordered_quantity'],
+        $orderData = null;
+        try {
+            DB::beginTransaction();
+            $buyOrder = BuyOrder::query()->create([
+                'user_id' => $userId,
+                'total_price' => $totalPrice
             ]);
+
+            foreach ($request['medications'] as $medication){
+                BuyOrderItem::query()->create([
+                    'buy_order_id' => $buyOrder['id'],
+                    'medication_id' => $medication['medication_id'],
+                    'ordered_quantity' => $medication['ordered_quantity'],
+                ]);
+            }
+
+            $orderData = $this->showOrder($buyOrder['id'])->original['data'];
+
+            DB::commit();
+        } catch (\Exception $exception) {
+            DB::rollBack();
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to create your order, please try again later.',
+                'data' => [],
+            ], 500);
         }
-
-        $orderData = $this->showOrder($buyOrder['id'])->original['data'];
-
         return response()->json([
             'status' => true,
             'message' => 'The buy order has been created successfully.',
@@ -215,19 +230,29 @@ class BuyOrderController extends Controller
                 ], 400);
             }
 
-            foreach ($orderItems as $orderItem) {
-                $medicationOrderedQuantity = Medication::query()->withTrashed()
-                    ->where('medications.id', '=', $orderItem->medication_id)
-                    ->first()->available_quantity;
-                if ($medicationOrderedQuantity >= $orderItem->ordered_quantity){
-                    Medication::query()->withTrashed()
-                        ->where('id', '=', $orderItem->medication_id)
-                        ->decrement('available_quantity', $orderItem->ordered_quantity);
+            try {
+                DB::beginTransaction();
+
+                //Reduce the available quantity in the warehouse
+                foreach ($orderItems as $orderItem) {
+                        Medication::query()->withTrashed()
+                            ->where('id', '=', $orderItem->medication_id)
+                            ->decrement('available_quantity', $orderItem->ordered_quantity);
                 }
+
+                BuyOrder::query()->find($id)->update([
+                    'order_status_id' => 2,
+                ]);
+
+                DB::commit();
+            } catch (\Exception $exception) {
+                DB::rollBack();
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to change order status, please try again later.',
+                'data' => [],
+            ], 500);
             }
-            BuyOrder::query()->find($id)->update([
-                'order_status_id' => 2,
-            ]);
         }
 
         $orderData = $this->showOrder($id)->original['data'];
