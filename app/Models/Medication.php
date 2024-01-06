@@ -43,4 +43,9 @@ class Medication extends Model
     {
         return $this->hasMany(BuyOrderItem::class);
     }
+
+    public function favorites(): HasMany
+    {
+        return $this->hasMany(Favorite::class);
+    }
 }

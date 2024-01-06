@@ -16,17 +16,16 @@ class MedicalClassificationSeeder extends Seeder
         $classifications = [
             'Analgesic',
             'Allergy',
-            'Musculoskeletal System',
             'Gastro-intestinal',
             'Respiratory Tract',
             'Dermatological',
             'Anti-infectives',
             'Ophthalmic',
-            'Oral And Dental Conditions',
+            'Dental Conditions',
             'Vitamins',
             'Neurological',
             'Cardiovascular',
-            'Ear, Nose And Throat',
+            'Ear, Nose & Throat',
         ];
 
         foreach ($classifications as $classification){

@@ -112,7 +112,7 @@ class BuyOrderController extends Controller
                 ->where('medications.id', '=', $medication['medication_id'])
                 ->first();
             if ($orderedMedication->available_quantity < $medication['ordered_quantity']) {
-                $unavailableMedication[] = [
+                $unavailableMedications[] = [
                     'id' => $orderedMedication->id,
                     'trade_name' => $orderedMedication->trade_name,
                     'available_quantity' => $orderedMedication->available_quantity,
@@ -122,16 +122,18 @@ class BuyOrderController extends Controller
             $totalPrice += $medication['ordered_quantity'] * $orderedMedication->price;
         }
 
-        if (isset($unavailableMedication)){
+        //Return a failed message when the order have unavailable medications
+        if (isset($unavailableMedications)){
             return response()->json([
                 'status' => false,
                 'message' => 'Sorry, the ordered medications quantities is more than the available.',
-                'data' => $unavailableMedication
+                'data' => $unavailableMedications
             ], 400);
         }
 
         $userId = Auth::user()->getAuthIdentifier();
 
+        //Create the order where do all operations together on DB successfully or do nothing
         $orderData = null;
         try {
             DB::beginTransaction();
@@ -159,6 +161,7 @@ class BuyOrderController extends Controller
                 'data' => [],
             ], 500);
         }
+
         return response()->json([
             'status' => true,
             'message' => 'The buy order has been created successfully.',
@@ -186,6 +189,7 @@ class BuyOrderController extends Controller
         $orderData = $this->showOrder($id)->original['data'];
         $statusId = $orderData['order_details']['order_status_id'];
 
+        //Don't change the order status if the order refused or received
         if ($statusId == 3 || $statusId == 4){
             return response()->json([
                 'status' => false,
@@ -194,13 +198,14 @@ class BuyOrderController extends Controller
             ], 400);
         }
 
+        //change the order status if the shipped
         else if ($statusId == 2){
             BuyOrder::query()->find($id)->update([
                 'order_status_id' => 3,
             ]);
         }
 
-        //change the status for a new order or refuse it
+        //change the status for a new order or refuse it if I don't have enough quantity to fulfil the order
         else {
             $orderItems = BuyOrderItem::query()->where('buy_order_id', '=', $id)->get();
 
@@ -218,6 +223,7 @@ class BuyOrderController extends Controller
                 }
             }
 
+            //refuse the order if I don't have enough quantity to fulfil the order
             if (isset($unavailableMedication)){
                 BuyOrder::query()->find($id)->update([
                     'order_status_id' => 4,
@@ -230,6 +236,7 @@ class BuyOrderController extends Controller
                 ], 400);
             }
 
+            //ship the order and reduce the shipped quantities medications where do all operations together on DB successfully or do nothing
             try {
                 DB::beginTransaction();
 

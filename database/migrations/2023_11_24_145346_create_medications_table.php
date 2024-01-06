@@ -13,13 +13,13 @@ return new class extends Migration
     {
         Schema::create('medications', function (Blueprint $table) {
             $table->id();
-            $table->string('scientific_name')->nullable();
+            $table->string('scientific_name');
             $table->string('trade_name');
             $table->foreignId('medical_classification_id')
                 ->constrained('medical_classifications')
                 ->cascadeOnDelete()
                 ->cascadeOnUpdate();
-            $table->string('manufacturer')->nullable();
+            $table->string('manufacturer');
             $table->unsignedInteger('available_quantity');
             $table->date('expiration_date');
             $table->unsignedInteger('price');

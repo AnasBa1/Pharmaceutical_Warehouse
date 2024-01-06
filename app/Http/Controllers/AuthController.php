@@ -13,8 +13,8 @@ class AuthController extends Controller
     public function register(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'username' => ['required', 'unique:users,username'],
-            'phone_number' => ['required', 'digits:10', 'unique:users,phone_number'],
+            'username' => ['required'],
+            'phone_number' => ['required', 'numeric', 'digits:10', 'unique:users,phone_number'],
             'password' => ['required'],
             'role' => ['in:pharmacist,manager'],
             ]);
@@ -53,7 +53,7 @@ class AuthController extends Controller
     public function login (Request $request):JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'phone_number' => ['required', 'digits:10'/*, 'exists:users,phone_number'*/],
+            'phone_number' => ['required', 'numeric', 'digits:10'],
             'password' => ['required'],
             'role' => ['required'],
         ]);

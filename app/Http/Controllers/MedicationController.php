@@ -13,9 +13,10 @@ class MedicationController extends Controller
 {
     public function listValidMedications(): JsonResponse
     {
-        $medications = Medication::query()->join('medical_classifications', 'medical_classification_id', '=', 'medical_classifications.id')
-                                  ->select('medications.id', 'medications.scientific_name' , 'medications.trade_name', 'medical_classifications.classification', 'medications.manufacturer', 'medications.available_quantity', 'medications.expiration_date', 'medications.price')
-                                  ->get();
+        $medications = Medication::query()
+            ->join('medical_classifications', 'medical_classification_id', '=', 'medical_classifications.id')
+            ->select('medications.id', 'medications.scientific_name' , 'medications.trade_name', 'medical_classifications.classification', 'medications.manufacturer', 'medications.available_quantity', 'medications.expiration_date', 'medications.price')
+            ->get();
 
         return response()->json([
             'status' => true,
@@ -77,7 +78,7 @@ class MedicationController extends Controller
         ], 201);
     }
 
-   public function search(Request $request): JsonResponse
+    public function search(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
             'search' => ['required'],
